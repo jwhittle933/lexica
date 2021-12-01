@@ -1,0 +1,41 @@
+const bdb = require('./BrownDriverBriggs.json')
+console.log(bdb)
+
+const lexicon = bdb.lexicon.part
+console.log(lexicon)
+
+const Color = {
+  Black: "30",
+  Red: "31",
+  Green: "32",
+  Yellow: "33",
+  Blue: "34",
+  Magenta: "35",
+  Cyan: "36",
+  White: "37",
+}
+
+// xml:lang => heb,arc
+// id => a,b,c -- xa,xb,xc
+// section => [{id: [ 'xn.aa' ], entry: [{ _: '' }], page?: []}]
+// title => א,ב,ג
+
+
+/*
+ {
+    ר: {
+      heb: {
+        //
+      },
+      arc: {
+        //
+      }
+    }
+ }
+ * */
+
+let assigns = {}
+
+Object.keys(lexicon).map(k => {
+  //
+})
