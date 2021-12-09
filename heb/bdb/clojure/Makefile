@@ -1,11 +1,7 @@
-all: fmt xml
+all: fmt run
 
-run: 
-	@clj -X:run :file ../BrownDriverBriggs.json
-.PHONY: run
-
-xml:
-	@clj -X:xml :file ../BrownDriverBriggs.xml
+run:
+	@clj -X:run :file ../BrownDriverBriggs.xml
 .PHONY: run
 
 cmd ?= fix
