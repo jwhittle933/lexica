@@ -2,14 +2,14 @@
 
 (defn tagis? [c tag] (= (:tag c) tag))
 
-(defn accumulate [content tag func]
-  "Searches `content` for a `tag`, and applies `func`.
+(defn- reducer [tag transform]
+  (fn [children child]
+    (if (and (map? child) (tagis? child tag))
+      (do (conj children (transform child)))
+      (do children))))
+
+(defn accumulate [content tag transform]
+  "Searches `content` for a `tag`, and applies `transform`.
   	`content` must be flattened first."
-  (reduce
-   (fn [children child]
-     (if (and (map? child) (tagis? child tag))
-       (do (conj children (func child)))
-       (do children)))
-   []
-   content))
+  (reduce (reducer tag transform) [] content))
 

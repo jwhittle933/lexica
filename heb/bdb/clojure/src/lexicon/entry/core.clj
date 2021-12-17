@@ -9,6 +9,8 @@
 (defn nil-default [val def]
   (if (nil? val) def val))
 
+(defn first-content [x] (first (:content x)))
+
 (defn ref->fromsbl [ref]
   (reduce #(strings/replace-first %1 #"\." %2) ref [" " ":"]))
 
@@ -72,41 +74,31 @@
     (if (nil? p) out (do (assoc out :page p)))))
 
 (defn apply->words [out flat]
+  "Accumulates words by tag."
   (assoc out :words (tags/accumulate flat :w #(first (:content %)))))
 
 (defn apply->definitions [out flat]
-  (assoc out :definitions (tags/accumulate flat :def #(first (:content %)))))
+  (assoc out :definitions (tags/accumulate flat :def first-content)))
 
 (defn apply->grammar [out flat root?]
-  (let [grammar (first (tags/accumulate flat :pos #(first (:content %))))]
+  (let [grammar (first (tags/accumulate flat :pos first-content))]
     (if (nil? grammar)
       out
       (do
-        (let [pos (strings/split grammar #"\.")]
-          (assoc
-           out
-           :grammar
-           {:pos ((keyword (first pos)) grammar/parts-of-speech)}))))))
+        (assoc out :grammar (grammar/parse->pos grammar))))))
 
 (defn apply->stems [out flat]
-  (let [s (tags/accumulate flat :stem #(first (:content %)))]
+  (let [s (tags/accumulate flat :stem first-content)]
     (if (= (count s) 0) out (assoc out :stems s))))
 
 (defn apply->entry [out content full?]
   (assoc out :entry (strings/trim (raw full? content))))
 
-(defn apply-all-pages
-  "Retroactively applies pages to unmarked items.
-		 Where an entry has no page, it's `staged`. When a page ref is
-		 found, that page is applied to all `staged` and then `committed`."
-  ([entries] (apply-all-pages entries [] []))
-  ([entries committed staged] entries))
-
 (defun lemma
   "Extract lemma from the entry.
 	 	If the first entry is a string, skip to second and extract from :content.
 	 	Some entries begin with a '[', so this must be skipped to extract the lemma."
-  ([(f :guard #(string? %)) s] (first (:content s)))
+  ([(f :guard #(string? %)) s] (first-content s))
   ([f _] (first (:content f))))
 
 (defn expand [part-id section-id dict lang]

@@ -8,16 +8,10 @@
 (def bdb-xml "/Users/jonathanwhittle/Development/lexica/heb/bdb/BrownDriverBriggs.xml")
 
 ;; ------------------ BDB XML ------------------------
-
 (defn run [& a]
   "Entrypoint for BDB xml"
-  ; (->> bdb-xml
-  ; 	(slurp)
-  ; 	(txml/parse)
-  ; 	(take 10)
-  ; 	#(json/pprint % :escape-unicode false))
   (let [bdb (xml/parse (slurp bdb-xml))
         parsed (lexicon/parse bdb)
-        topten (take 10 parsed)]
-    (json/pprint topten :escape-unicode false)))
+        topten (take 20 parsed)]
+    (json/pprint (lexicon/apply-pages topten) :escape-unicode false)))
 
