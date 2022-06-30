@@ -3,6 +3,7 @@
             [lexicon.attrs.core :as attrs]
             [lexicon.content.core :as content]
             [lexicon.tags.core :as tags]
+            [lexicon.senses.core :as senses]
             [clojure.string :as strings]
             [defun.core :refer [defun]]))
 
@@ -91,6 +92,9 @@
   (let [s (tags/accumulate flat :stem first-content)]
     (if (= (count s) 0) out (assoc out :stems s))))
 
+(defn apply->senses [out senses]
+  (assoc out :senses senses))
+
 (defn apply->entry [out content full?]
   (assoc out :entry (strings/trim (raw full? content))))
 
@@ -123,4 +127,7 @@
           (apply->definitions flat)
           (apply->grammar flat root?)
           (apply->stems flat)
-          (apply->entry content full?)))))
+          (apply->senses (senses/collect content))
+          (apply->entry content full?)
+          ; (assoc :senses (content/flat-senses content))
+          ))))

@@ -3,10 +3,10 @@
             [lexicon.attrs.core :as attrs]))
 
 (defn apply-pages
-		"Applies page number to each entry. Current page starts at 0, and increments when a 
+  "Applies page number to each entry. Current page starts at 0, and increments when a 
 		 page is encountered on an entry. The first entry is marked, so 0 is incremented on first
 		 iter."
-		([entries] (apply-pages entries [] [] 0))
+  ([entries] (apply-pages entries [] [] 0))
   ([entries committed staged current-page]
    (if (empty? entries)
      committed
