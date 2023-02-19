@@ -13,6 +13,6 @@ pub struct Args {
     #[structopt(short, long, default_value = "json")]
     pub format: String,
 
-    #[structopt(short, long, env = "OUT_DIR")]
-    pub out: Option<String>,
+    #[structopt(short, long, default_value = "written", env = "OUT_DIR")]
+    pub out: String,
 }

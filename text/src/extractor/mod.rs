@@ -3,13 +3,11 @@ pub mod text;
 
 use futures::TryStreamExt;
 use futures_core::Stream;
-use futures_util::{pin_mut, StreamExt};
 use sqlx::{postgres::PgPool, FromRow};
 
 pub use book::Book;
-pub use text::Text;
-
-use crate::extractor::text::LXX;
+pub use text::{Text, LXX, MT};
+use tracing::info;
 
 #[derive(Debug, Clone)]
 pub struct Extractor {
@@ -23,45 +21,74 @@ impl Extractor {
 
     #[tracing::instrument(skip_all)]
     pub async fn books(&self) -> impl Stream<Item = Book> {
+        info!("Querying books");
         let (tx, rx) = flume::unbounded();
         let mut conn = self.pool.acquire().await.expect("failed to get connection");
 
+        let sender = tx.clone();
         tokio::spawn(async move {
             let mut rows = sqlx::query(r#" SELECT id, name FROM books"#).fetch(&mut conn);
 
             while let Some(row) = rows.try_next().await.expect("Could not query books") {
-                tx.send_async(Book::from_row(&row).expect("failed to query book"))
-                    .await
-                    .expect("book tx send failed");
+                let book = Book::from_row(&row).expect("failed to query book");
+                info!("Book: {:?}", book);
+                sender.send(book).expect("send book failed");
             }
         });
+
+        drop(tx);
 
         rx.into_stream()
     }
 
-    #[tracing::instrument(skip_all)]
-    pub async fn texts_by_book<S>(&self, books: S) -> impl Stream<Item = Text<LXX>>
-    where
-        S: Stream<Item = Book>,
-    {
-        pin_mut!(books);
+    #[tracing::instrument(skip(self))]
+    pub async fn mt_by_book(&self, book: Book) -> impl Stream<Item = Text<MT>> {
         let (tx, rx) = flume::unbounded();
+        let mut conn = self.pool.acquire().await.expect("failed to get connection");
 
-        while let Some(book) = books.next().await {
-            let mut conn = self.pool.acquire().await.expect("failed to get connection");
-            let tx_clone = tx.clone();
+        let sender = tx.clone();
+        tokio::spawn(async move {
+            let mut rows = sqlx::query!(
+                "SELECT chapter, verse, text FROM mt WHERE book_id = $1 ORDER BY chapter, verse",
+                book.id
+            )
+            .map(|r| Text::<MT>::new(book.name.clone(), r.chapter as u32, r.verse as u32, r.text))
+            .fetch(&mut conn);
 
-            tokio::spawn(async move {
-                let mut lxx_rows =
-                    sqlx::query(r#"SELECT chapter, verse, text FROM lxx WHERE book_id = ?"#)
-                        .bind(book.id)
-                        .fetch(&mut conn);
+            while let Some(text) = rows.try_next().await.expect("could not query texts") {
+                sender.send_async(text).await.expect("tx send text failure");
+            }
+        });
 
-                while let Some(row) = lxx_rows.try_next().await.expect("could not query texts") {
-                    tx_clone.send_async(Text::<LXX>::from_row(&row).expect(""));
-                }
-            });
-        }
+        drop(tx);
+        rx.into_stream()
+    }
+
+    #[tracing::instrument(skip(self))]
+    pub async fn lxx_by_book(&self, book: Book) -> impl Stream<Item = Text<LXX>> {
+        let (tx, rx) = flume::unbounded();
+        let mut conn = self.pool.acquire().await.expect("failed to get connection");
+
+        tokio::spawn(async move {
+            let mut rows = sqlx::query!(
+                "SELECT chapter, verse, text, subverse FROM lxx WHERE book_id = $1 ORDER BY chapter, verse",
+                book.id
+            )
+            .map(|r| {
+                Text::<LXX>::new(
+                    book.name.clone(),
+                    r.chapter as u32,
+                    r.verse as u32,
+                    r.text,
+                    r.subverse,
+                )
+            })
+            .fetch(&mut conn);
+
+            while let Some(text) = rows.try_next().await.expect("could not query texts") {
+                tx.send_async(text).await.expect("tx send text failure");
+            }
+        });
 
         rx.into_stream()
     }

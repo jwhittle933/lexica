@@ -1,2 +1,2 @@
 [workspace]
-members = ["text"]
+members = ["text", "corelib"]

@@ -1,29 +1,58 @@
 use std::marker::PhantomData;
 
 use serde::{Deserialize, Serialize};
-use sqlx::{postgres::PgRow, FromRow};
 
 pub struct LXX;
 pub struct MT;
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
-pub struct Text<Src = MT> {
-    pub book: Option<String>,
+pub struct Text<Src> {
+    pub book: String,
     pub chapter: u32,
     pub verse: u32,
     pub text: String,
     pub subverse: Option<String>, // only for LXX, 3 Kingdoms 12:24
-    _marker: PhantomData<Src>,
+    pub _marker: PhantomData<Src>,
 }
 
-impl FromRow<'_, PgRow> for Text<LXX> {
-    fn from_row(row: &PgRow) -> Result<Self, sqlx::Error> {
-        //
+impl Text<MT> {
+    pub fn new(book: String, chapter: u32, verse: u32, text: String) -> Self {
+        Self {
+            book,
+            chapter,
+            verse,
+            text,
+            subverse: None,
+            _marker: PhantomData,
+        }
     }
 }
 
-impl FromRow<'_, PgRow> for Text<MT> {
-    fn from_row(row: &PgRow) -> Result<Self, sqlx::Error> {
-        //
+impl Text<LXX> {
+    pub fn new(
+        book: String,
+        chapter: u32,
+        verse: u32,
+        text: String,
+        subverse: Option<String>,
+    ) -> Self {
+        Self {
+            book,
+            chapter,
+            verse,
+            text,
+            subverse,
+            _marker: PhantomData,
+        }
+    }
+}
+
+impl<Src> std::fmt::Display for Text<Src> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "{} {}:{} - {}",
+            self.book, self.chapter, self.verse, self.text
+        )
     }
 }
