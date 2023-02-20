@@ -1,3 +1,4 @@
+pub mod index;
 pub mod kv;
 
 use std::io::{BufWriter, Write};
@@ -7,7 +8,6 @@ use std::{fs::File, path::Path};
 #[derive(Debug)]
 pub struct TextStore {
     writer: File,
-    index: File,
 }
 
 impl TextStore {
@@ -22,32 +22,38 @@ impl TextStore {
         let file_location = format!("{}/{}.jsonl", path, book);
 
         let writer = if Path::new(&file_location).is_file() {
-            File::open(file_location)?
+            let f = File::open(file_location)?;
+            f.set_len(0)?;
+            f
         } else {
             File::create(file_location)?
         };
 
-        let index = if Path::new(&idx).is_file() {
-            File::open(idx)?
-        } else {
-            File::create(idx)?
-        };
+        // let index = if Path::new(&idx).is_file() {
+        //     File::open(idx)?
+        // } else {
+        //     File::create(idx)?
+        // };
 
-        Ok(Self { writer, index })
+        Ok(Self { writer })
     }
 
     /// Adds a new text entry
     #[tracing::instrument(skip(self))]
-    pub fn new_entry(&self, chapter: u32, verse: u32, partition: Option<String>, content: &str) {
+    pub fn new_entry(
+        &self,
+        chapter: u32,
+        verse: u32,
+        partition: Option<String>,
+        content: &str,
+    ) -> Result<(), std::io::Error> {
         let value = serde_json::json!({
             "ref": format!("{}:{}{}", chapter, verse, partition.unwrap_or_default()),
-            "content": content
+            "text": content
         });
 
         let mut f = BufWriter::new(&self.writer);
-        let (_, _) = (
-            f.write_all(value.to_string().as_bytes()),
-            f.write("\n".as_bytes()),
-        );
+        f.write_all(value.to_string().as_bytes())
+            .and(f.write("\n".as_bytes()).map(|_| ()))
     }
 }

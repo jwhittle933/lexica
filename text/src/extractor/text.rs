@@ -56,3 +56,15 @@ impl<Src> std::fmt::Display for Text<Src> {
         )
     }
 }
+
+impl std::fmt::Display for LXX {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str("lxx")
+    }
+}
+
+impl std::fmt::Display for MT {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str("mt")
+    }
+}

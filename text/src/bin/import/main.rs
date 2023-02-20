@@ -34,14 +34,15 @@ async fn main() -> Result<(), std::io::Error> {
     let mut books = extractor.books().await;
     while let Some(book) = books.next().await {
         let name = book.name.clone();
+        info!("Book: {}", name);
+
         let extr = extractor.clone();
         let out_dir = args.out.clone();
-        info!("Book: {}", name);
+
         let lxx_store = TextStore::new_writer(&name, format!("{}/lxx", out_dir))?;
         let mt_store = TextStore::new_writer(&name, format!("{}/mt", out_dir))?;
 
-        // new task for each book
-        // use channel for synchonrizing
+        // new thread for each book
         handles.push(tokio::spawn(async move {
             let mut lxx = extr.lxx_by_book(book.clone()).await;
             let mut mt = extr.mt_by_book(book).await;
@@ -50,32 +51,23 @@ async fn main() -> Result<(), std::io::Error> {
                 match (lxx.next().await, mt.next().await) {
                     (None, None) => break,
                     (Some(lxx_text), Some(mt_text)) => {
-                        lxx_store.new_entry(
-                            lxx_text.chapter,
-                            lxx_text.verse,
-                            lxx_text.subverse,
-                            &lxx_text.text,
-                        );
-
-                        mt_store.new_entry(mt_text.chapter, mt_text.verse, None, &mt_text.text);
+                        add_text(&lxx_store, lxx_text).expect("lxx write failed");
+                        add_text(&mt_store, mt_text).expect("mt write failed");
                     }
-                    (Some(lxx_text), None) => {
-                        lxx_store.new_entry(
-                            lxx_text.chapter,
-                            lxx_text.verse,
-                            lxx_text.subverse,
-                            &lxx_text.text,
-                        );
+                    (Some(text), None) => {
+                        add_text(&lxx_store, text).expect("lxx write failed");
                     }
-                    (None, Some(mt_text)) => {
-                        mt_store.new_entry(mt_text.chapter, mt_text.verse, None, &mt_text.text);
+                    (None, Some(text)) => {
+                        add_text(&mt_store, text).expect("mt write failed");
                     }
                 }
             }
         }))
     }
 
-    handles.for_each(|_| async {}).await;
+    Ok(handles.for_each(|_| async {}).await)
+}
 
-    Ok(())
+fn add_text<Src>(store: &TextStore, text: Text<Src>) -> Result<(), std::io::Error> {
+    store.new_entry(text.chapter, text.verse, text.subverse, &text.text)
 }
